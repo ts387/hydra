@@ -19,12 +19,14 @@ dependencies = [
     'pillow<10',
     'tensorboard',
     'pytest',
+    'torch>=1.12',  # Required for Metal Performance Shaders (MPS) support on Apple Silicon
 ]
 
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
 ]
 
 [project.urls]

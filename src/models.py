@@ -12,6 +12,7 @@ from . import fft
 from . import lie_tools
 from . import mask
 from . import pose_search
+from . import device_utils
 
 
 class MyDataParallel(nn.DataParallel):
@@ -198,20 +199,20 @@ class CryoDRGN3(nn.Module):
         """
         device = self.coords.device
         if self.verbose_time:
-            torch.cuda.synchronize(device)
+            device_utils.synchronize_device(device)
         start_time_encoder = time.time()
         latent_variables_dict = self.encode(
             in_dict, ctf=in_dict['ctf']
         )
         in_dict['tilt_index'] = in_dict['tilt_index'].reshape(-1)
         if self.verbose_time:
-            torch.cuda.synchronize(device)
+            device_utils.synchronize_device(device)
         start_time_decoder = time.time()
         y_pred, y_gt_processed, times = self.decode(
             latent_variables_dict, in_dict['ctf'], in_dict['y']
         )
         if self.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(device)
         end_time = time.time()
         out_dict = {
             'y_pred': y_pred,
@@ -360,11 +361,11 @@ class CryoDRGN3(nn.Module):
         # generate slices
         device = self.coords.device
         if self.verbose_time:
-            torch.cuda.synchronize(device)
+            device_utils.synchronize_device(device)
         start_time_coords = time.time()
         x = self.coords[self.output_mask.binary_mask] @ rots  # batch_size, (n_tilts,) (n_classes,) n_pts, 3
         if self.verbose_time:
-            torch.cuda.synchronize(device)
+            device_utils.synchronize_device(device)
         start_time_query = time.time()
         if self.n_classes == 1:
             y_pred = self.hypervolume[0](x, z)  # batch_size, (n_tilts,) (n_classes,) n_pts
@@ -377,7 +378,7 @@ class CryoDRGN3(nn.Module):
                 y_pred_list.append(y_pred[..., None, :])
             y_pred = torch.cat(y_pred_list, dim=-2)  # batch_size, (n_tilts,) (n_classes,) n_pts
         if self.verbose_time:
-            torch.cuda.synchronize(device)
+            device_utils.synchronize_device(device)
         end_time_query = time.time()
         times = {
             'coords': start_time_query - start_time_coords,

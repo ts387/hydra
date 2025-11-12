@@ -15,6 +15,7 @@ from . import mrc
 from . import analysis
 from . import utils
 from . import models
+from . import device_utils
 
 from .configuration import AnalysisConfigurations, TrainingConfigurations
 from .lattice import Lattice
@@ -85,9 +86,9 @@ class ModelAnalyzer:
         self.train_configs = TrainingConfigurations(train_config_vals)
         self.traindir = self.train_configs.outdir
 
-        self.use_cuda = torch.cuda.is_available()
-        self.device = torch.device('cuda:0' if self.use_cuda else 'cpu')
-        self.logger.info(f"Use cuda {self.use_cuda}")
+        self.device, self.device_type = device_utils.get_device()
+        self.use_cuda = (self.device_type == 'cuda')  # For backward compatibility
+        self.logger.info(f"Using device: {device_utils.get_device_name(self.device)}")
 
         # use last completed epoch if no epoch given
         if self.configs.epoch == -1:

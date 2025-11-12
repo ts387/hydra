@@ -27,8 +27,38 @@ Installation was successful!
 ```
 
 You may also choose to define an environment variable `$DRGNAI_DATASETS` in your bash environment, which will allow you
-to point to a file listing locations of input files and dataset labels to use as shortcuts. For more information, 
+to point to a file listing locations of input files and dataset labels to use as shortcuts. For more information,
 see our [detailed user guide](https://ez-lab.gitbook.io/drgn-ai/).
+
+
+## GPU Support ##
+
+Hydra supports GPU acceleration on multiple platforms:
+
+- **NVIDIA GPUs**: Full CUDA support for Linux and Windows systems
+- **Apple Silicon (M-Series)**: Native Metal Performance Shaders (MPS) support for M1, M2, M3, and later Macs
+- **CPU fallback**: Automatic CPU-only mode if no GPU is available
+
+### Requirements for Metal GPU Support (Apple Silicon)
+
+To use Metal GPU acceleration on M-Series Macs, ensure you have:
+
+- macOS 12.3 or later
+- PyTorch 1.12 or later (automatically installed with Hydra)
+- Python 3.8 or later (recommended, though 3.7 may work)
+
+Hydra will automatically detect and use the Metal GPU when available. You can verify GPU detection by checking the log output when running `drgnai train` or `drgnai analyze`, which will display:
+
+```
+Using device: Apple Metal Performance Shaders (M-Series GPU)
+```
+
+### Performance Notes
+
+- Metal GPU performance on Apple Silicon is typically comparable to mid-range NVIDIA GPUs
+- Energy efficiency is significantly better on Apple Silicon due to unified memory architecture
+- Some operations may have different numerical precision characteristics across backends (CUDA vs Metal vs CPU),
+  but results should be scientifically equivalent within normal tolerances
 
 
 ## Usage ##

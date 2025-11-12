@@ -20,6 +20,7 @@ from . import dataset_fast
 from . import dataset
 from . import ctf
 from . import summary
+from . import device_utils
 
 from .configuration import TrainingConfigurations
 from .lattice import Lattice
@@ -82,7 +83,7 @@ class ModelTrainer:
         self.logger.addHandler(logging.FileHandler(
             os.path.join(self.configs.outdir, "training.log")))
 
-        n_gpus = torch.cuda.device_count()
+        n_gpus = device_utils.get_device_count()
         self.logger.info(f"Number of available gpus: {n_gpus}")
         self.n_prcs = max(n_gpus, 1)
 
@@ -95,9 +96,9 @@ class ModelTrainer:
         torch.manual_seed(self.configs.seed)
 
         # set the device
-        self.use_cuda = torch.cuda.is_available()
-        self.device = torch.device('cuda:0' if self.use_cuda else 'cpu')
-        self.logger.info(f"Use cuda {self.use_cuda}")
+        self.device, self.device_type = device_utils.get_device()
+        self.use_cuda = (self.device_type == 'cuda')  # For backward compatibility
+        self.logger.info(f"Using device: {device_utils.get_device_name(self.device)}")
 
         # tensorboard writer
         self.summaries_dir = os.path.join(self.configs.outdir, 'summaries')
@@ -679,7 +680,7 @@ class ModelTrainer:
                 # with torch.autograd.detect_anomaly():
                 self.train_step(in_dict, end_time=end_time)
                 if self.configs.verbose_time:
-                    torch.cuda.synchronize()
+                    device_utils.synchronize_device(self.device)
 
                 end_time = time.time()
 
@@ -728,7 +729,7 @@ class ModelTrainer:
 
     def train_step(self, in_dict, end_time):
         if self.configs.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(self.device)
             self.run_times['dataloading'].append(time.time() - end_time)
 
         # update output mask -- image-based scaling
@@ -760,13 +761,13 @@ class ModelTrainer:
 
         # move to gpu
         if self.configs.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(self.device)
         start_time_gpu = time.time()
 
         for key in in_dict.keys():
             in_dict[key] = in_dict[key].to(self.device)
         if self.configs.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(self.device)
             self.run_times['to_gpu'].append(time.time() - start_time_gpu)
 
         # zero grad
@@ -784,19 +785,19 @@ class ModelTrainer:
 
         # loss
         if self.configs.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(self.device)
 
         start_time_loss = time.time()
         total_loss, all_losses = self.loss(y_pred, y_gt_processed,
                                            latent_variables_dict)
 
         if self.configs.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(self.device)
             self.run_times['loss'].append(time.time() - start_time_loss)
 
         # backward pass
         if self.configs.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(self.device)
         start_time_backward = time.time()
         total_loss.backward()
         self.cur_loss += total_loss.item() * len(ind)
@@ -820,7 +821,7 @@ class ModelTrainer:
                 raise NotImplementedError
 
         if self.configs.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(self.device)
 
             self.run_times['backward'].append(
                 time.time() - start_time_backward)
@@ -837,18 +838,18 @@ class ModelTrainer:
                     self.y_pred_last = y_pred[np.arange(batch_size), latent_variables_dict['idx_best_class']]
 
             if self.configs.verbose_time:
-                torch.cuda.synchronize()
+                device_utils.synchronize_device(self.device)
 
             start_time_cpu = time.time()
             (rot_pred, trans_pred, conf_pred, logvar_pred, rot_all_classes, trans_all_classes, idx_best_class,
              p_classes) = self.detach_latent_variables(latent_variables_dict)
 
             if self.configs.verbose_time:
-                torch.cuda.synchronize()
+                device_utils.synchronize_device(self.device)
                 self.run_times['to_cpu'].append(time.time() - start_time_cpu)
 
             # log
-            if self.use_cuda:
+            if self.device.type != 'cpu':
                 ind = ind.cpu()
                 ind_tilt = ind_tilt.cpu()
 
@@ -927,7 +928,7 @@ class ModelTrainer:
 
     def forward_pass(self, in_dict):
         if self.configs.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(self.device)
 
         start_time_ctf = time.time()
         ctf_local = self.get_ctfs_at(in_dict['tilt_index'])
@@ -937,7 +938,7 @@ class ModelTrainer:
                 -1, self.configs.n_tilts, *ctf_local.shape[1:])
 
         if self.configs.verbose_time:
-            torch.cuda.synchronize()
+            device_utils.synchronize_device(self.device)
             self.run_times['ctf'].append(time.time() - start_time_ctf)
 
         # forward pass
