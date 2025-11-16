@@ -83,7 +83,10 @@ All changes maintain full backward compatibility with:
 ### Software
 - macOS 12.3 or later
 - Python 3.8+ (recommended, though 3.7 may work)
-- PyTorch 1.12 or later
+- PyTorch 2.0 or later (recommended); minimum PyTorch 1.12
+  - PyTorch 2.0+ provides better MPS operation coverage and performance
+  - PyTorch 1.12-1.13 have limited F.grid_sample support
+  - PyTorch < 2.0 may have suboptimal FFT performance on MPS
 
 ### Hardware
 - Apple Silicon Mac (M1, M2, M3, M4, or later)

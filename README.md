@@ -44,8 +44,10 @@ Hydra supports GPU acceleration on multiple platforms:
 To use Metal GPU acceleration on M-Series Macs, ensure you have:
 
 - macOS 12.3 or later
-- PyTorch 1.12 or later (automatically installed with Hydra)
+- PyTorch 2.0 or later (recommended for best MPS support; minimum 1.12)
 - Python 3.8 or later (recommended, though 3.7 may work)
+
+**Note**: While PyTorch 1.12+ provides basic MPS support, PyTorch 2.0+ is strongly recommended for improved operation coverage and performance optimization.
 
 Hydra will automatically detect and use the Metal GPU when available. You can verify GPU detection by checking the log output when running `drgnai train` or `drgnai analyze`, which will display:
 

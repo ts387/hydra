@@ -100,6 +100,12 @@ class ModelTrainer:
         self.use_cuda = (self.device_type == 'cuda')  # For backward compatibility
         self.logger.info(f"Using device: {device_utils.get_device_name(self.device)}")
 
+        # Check for MPS compatibility warnings
+        if self.device_type == 'mps':
+            mps_warnings = device_utils.check_mps_compatibility()
+            for warning in mps_warnings:
+                self.logger.warning(f"MPS: {warning}")
+
         # tensorboard writer
         self.summaries_dir = os.path.join(self.configs.outdir, 'summaries')
         os.makedirs(self.summaries_dir, exist_ok=True)
@@ -331,9 +337,16 @@ class ModelTrainer:
 
         # TODO: Replace with DistributedDataParallel
         if self.n_prcs > 1:
-            self.model = MyDataParallel(self.model)
+            if self.device_type == 'cuda':
+                self.model = MyDataParallel(self.model)
+            else:
+                self.logger.warning(
+                    f"Multi-GPU DataParallel not supported for {self.device_type} backend. "
+                    "Using single device."
+                )
+                self.n_prcs = 1
 
-        self.logger.info("Model initialized. Moving to GPU...")
+        self.logger.info(f"Model initialized. Moving to {self.device_type.upper()}...")
         self.model.to(self.device)
         self.model.output_mask\
             .binary_mask = self.model.output_mask.binary_mask.cpu()

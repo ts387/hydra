@@ -120,14 +120,128 @@ def empty_cache(device=None):
     Empty the GPU memory cache.
 
     Args:
-        device (torch.device or None): Device to clear cache for
+        device (torch.device or None): Device to clear cache for.
+                                       If None, clears all available caches.
     """
-    if device is None or device.type == 'cuda':
+    if device is None:
+        # Clear all available caches
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+            torch.mps.empty_cache()
+    elif device.type == 'cuda':
+        torch.cuda.empty_cache()
     elif device.type == 'mps':
         if hasattr(torch.mps, 'empty_cache'):
             torch.mps.empty_cache()
+
+
+def check_mps_compatibility():
+    """
+    Check MPS compatibility and return warnings for potential issues.
+
+    Returns:
+        list: List of warning messages about MPS compatibility issues
+    """
+    warnings = []
+
+    if not (hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()):
+        return warnings
+
+    # Check PyTorch version for known MPS issues
+    version_parts = torch.__version__.split('.')
+    try:
+        major = int(version_parts[0])
+        minor = int(version_parts[1].split('+')[0].split('a')[0].split('b')[0].split('rc')[0])
+    except (ValueError, IndexError):
+        major, minor = 1, 12  # Assume minimum supported version
+
+    # PyTorch < 2.0 has limited MPS support
+    if major < 2:
+        warnings.append(
+            f"PyTorch {torch.__version__} has limited MPS support. "
+            "Recommend upgrading to PyTorch 2.0+ for best performance and compatibility."
+        )
+
+        # Specific operation warnings for older versions
+        if major == 1 and minor < 13:
+            warnings.append(
+                "F.grid_sample may have issues on MPS with PyTorch < 1.13. "
+                "Consider upgrading or using CPU fallback for pose search operations."
+            )
+
+    # Check for MPS-specific limitations
+    if major < 2 or (major == 2 and minor < 1):
+        warnings.append(
+            "Complex number operations (FFT) may have limited MPS optimization. "
+            "Performance may vary compared to CUDA."
+        )
+
+    return warnings
+
+
+def validate_mps_operations(operations_to_check=None):
+    """
+    Validate that specific PyTorch operations work on MPS.
+
+    Args:
+        operations_to_check (list or None): List of operation names to check.
+                                           If None, checks common operations.
+
+    Returns:
+        dict: Dictionary mapping operation names to (success, error_message)
+    """
+    if not (hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()):
+        return {}
+
+    results = {}
+    device = torch.device('mps')
+
+    # Default operations to check
+    if operations_to_check is None:
+        operations_to_check = ['matmul', 'fft2', 'grid_sample', 'conv2d']
+
+    # Test matrix multiplication
+    if 'matmul' in operations_to_check:
+        try:
+            x = torch.randn(10, 10, device=device)
+            _ = torch.matmul(x, x)
+            results['matmul'] = (True, None)
+        except Exception as e:
+            results['matmul'] = (False, str(e))
+
+    # Test FFT operations
+    if 'fft2' in operations_to_check:
+        try:
+            x = torch.randn(10, 10, device=device)
+            _ = torch.fft.fft2(x)
+            results['fft2'] = (True, None)
+        except Exception as e:
+            results['fft2'] = (False, str(e))
+
+    # Test grid_sample
+    if 'grid_sample' in operations_to_check:
+        try:
+            import torch.nn.functional as F
+            input_tensor = torch.randn(1, 1, 10, 10, device=device)
+            grid = torch.randn(1, 10, 10, 2, device=device)
+            _ = F.grid_sample(input_tensor, grid, align_corners=False)
+            results['grid_sample'] = (True, None)
+        except Exception as e:
+            results['grid_sample'] = (False, str(e))
+
+    # Test 2D convolution
+    if 'conv2d' in operations_to_check:
+        try:
+            import torch.nn.functional as F
+            input_tensor = torch.randn(1, 1, 10, 10, device=device)
+            weight = torch.randn(1, 1, 3, 3, device=device)
+            _ = F.conv2d(input_tensor, weight)
+            results['conv2d'] = (True, None)
+        except Exception as e:
+            results['conv2d'] = (False, str(e))
+
+    return results
 
 
 def print_device_info():
@@ -153,6 +267,13 @@ def print_device_info():
         if torch.backends.mps.is_available():
             print(f"MPS (Metal) Available: Yes")
             print(f"  - Apple Silicon GPU acceleration enabled")
+
+            # Check for compatibility warnings
+            warnings = check_mps_compatibility()
+            if warnings:
+                print("\n  MPS Compatibility Warnings:")
+                for warning in warnings:
+                    print(f"    ! {warning}")
         else:
             print("MPS (Metal) Available: No")
             if torch.backends.mps.is_built():

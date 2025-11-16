@@ -68,6 +68,27 @@ def test_device_detection():
         device_utils.empty_cache(device)
         print("Device cache cleared successfully")
 
+        # Check MPS compatibility warnings
+        if device_type == 'mps':
+            print("\n" + "="*60)
+            print("MPS Compatibility Check")
+            print("="*60)
+
+            warnings = device_utils.check_mps_compatibility()
+            if warnings:
+                print("\nCompatibility warnings:")
+                for warning in warnings:
+                    print(f"  ! {warning}")
+            else:
+                print("No compatibility warnings detected")
+
+            # Validate MPS operations
+            print("\nValidating MPS operations...")
+            results = device_utils.validate_mps_operations()
+            for op_name, (success, error) in results.items():
+                status = "OK" if success else f"FAILED: {error}"
+                print(f"  {op_name}: {status}")
+
         print("\n" + "="*60)
         print("All tests passed! ✓")
         print("="*60)

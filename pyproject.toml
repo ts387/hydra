@@ -19,7 +19,7 @@ dependencies = [
     'pillow<10',
     'tensorboard',
     'pytest',
-    'torch>=1.12',  # Required for Metal Performance Shaders (MPS) support on Apple Silicon
+    'torch>=1.12',  # Minimum for MPS support; PyTorch 2.0+ recommended for best performance
 ]
 
 classifiers = [
