@@ -31,6 +31,18 @@ to point to a file listing locations of input files and dataset labels to use as
 see our [detailed user guide](https://ez-lab.gitbook.io/drgn-ai/).
 
 
+## Running on Google Colab ##
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ts387/hydra/blob/main/notebooks/hydra_colab.ipynb)
+
+The notebook [`notebooks/hydra_colab.ipynb`](notebooks/hydra_colab.ipynb) runs Hydra on a Colab GPU without any local setup.
+Colab's Python is newer than Hydra supports, so the notebook installs Hydra and a tested set of dependencies into a
+separate Python 3.10 environment and drives the `drgnai` command from there. It covers the whole workflow: a synthetic
+three-class demo dataset with ground truth (or your own particles from RELION or cryoSPARC), configuration presets,
+training with a live dashboard and resuming after a disconnect, per-class analysis, an interactive 3D map viewer,
+selecting particles by class and exporting them back to RELION/cryoSPARC, and packaging the results.
+
+
 ## Usage ##
 
 This package installs the `drgnai` command line tool for running experiments, which contains three key subcommands:
